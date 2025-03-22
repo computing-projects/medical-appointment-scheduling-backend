@@ -1,5 +1,3 @@
-CREATE SCHEMA medsim;
-
 CREATE TABLE medsim.users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
