@@ -57,7 +57,7 @@ CREATE TABLE medsim.doctors (
     user_id INT UNIQUE NOT NULL REFERENCES medsim.users(id) ON DELETE CASCADE,
     crm VARCHAR(20) UNIQUE NOT NULL CHECK (crm ~ '^CRM\/[A-Z]{2} [0-9]{6}$'),
     specialty medsim.specialty_type NOT NULL DEFAULT 'General',
-    appointment_duration_min INT NOT NULL CHECK (appointment_duration_min BETWEEN 10 AND 120),
+    appointment_duration_med INT NOT NULL CHECK (appointment_duration_med BETWEEN 10 AND 90),
 );
 
 -- Tabela de Planos aceitos por Medicos
@@ -67,15 +67,38 @@ CREATE TABLE medsim.doctor_health_plans (
     PRIMARY KEY (doctor_id, health_plan)
 );
 
+-- Horarios dos Medicos
+CREATE TABLE medsim.schedules (
+    id SERIAL PRIMARY KEY,
+    doctor_id INT NOT NULL REFERENCES medsim.doctors(id) ON DELETE CASCADE,
+    weekday medsim.weekday_enum NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE (doctor_id, weekday, start_time)
+);
+
 -- Tabela de Pacientes (Clientes)
 CREATE TABLE medsim.clients (
     id SERIAL PRIMARY KEY,
     user_id INT UNIQUE NOT NULL REFERENCES medsim.users(id) ON DELETE CASCADE,
-    rg VARCHAR(20) UNIQUE NOT NULL CHECK (rg ~ '^[0-9.-]+$'),
     cpf VARCHAR(14) UNIQUE NOT NULL CHECK (cpf ~ '^[0-9]{3}\.?[0-9]{3}\.?[0-9]{3}-?[0-9Xx]{2}$'),
     health_plan medsim.health_plan_type DEFAULT 'Other',
     health_history TEXT DEFAULT NULL,
     date_of_birth DATE NOT NULL,
+);
+
+-- Notificacoes
+CREATE TABLE medsim.notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES medsim.users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    type medsim.notification_type_enum NOT NULL,
+    status medsim.notification_status_enum NOT NULL DEFAULT 'pending',
+    sent BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- Tabela de Agendamentos
@@ -96,6 +119,15 @@ CREATE TABLE medsim.appointments (
     )
 );
 
+-- Avaliacoes
+CREATE TABLE medsim.reviews (
+    id SERIAL PRIMARY KEY,
+    appointment_id INT UNIQUE NOT NULL REFERENCES medsim.appointments(id) ON DELETE SET NULL,
+    rating INT CHECK (rating BETWEEN 1 AND 5) NOT NULL,
+    comment VARCHAR(255),
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+);
+
 -- Lista de Espera
 CREATE TABLE medsim.waitlist (
     id SERIAL PRIMARY KEY,
@@ -106,52 +138,6 @@ CREATE TABLE medsim.waitlist (
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Notificacoes
-CREATE TABLE medsim.notifications (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES medsim.users(id) ON DELETE CASCADE,
-    message TEXT NOT NULL,
-    type medsim.notification_type_enum NOT NULL,
-    status medsim.notification_status_enum NOT NULL DEFAULT 'pending',
-    sent BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-
--- Avaliacoes
-CREATE TABLE medsim.reviews (
-    id SERIAL PRIMARY KEY,
-    appointment_id INT UNIQUE NOT NULL REFERENCES medsim.appointments(id) ON DELETE SET NULL,
-    rating INT CHECK (rating BETWEEN 1 AND 5) NOT NULL,
-    comment VARCHAR(255),
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-);
-
--- Horarios dos Medicos
-CREATE TABLE medsim.schedules (
-    id SERIAL PRIMARY KEY,
-    doctor_id INT NOT NULL REFERENCES medsim.doctors(id) ON DELETE CASCADE,
-    weekday medsim.weekday_enum NOT NULL,
-    start_time TIME NOT NULL,
-    end_time TIME NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE (doctor_id, weekday, start_time)
-);
-
--- Chat
-CREATE TABLE medsim.chat (
-    id SERIAL PRIMARY KEY,
-    sender_id INT NOT NULL REFERENCES medsim.users(id) ON DELETE CASCADE,
-    receiver_id INT NOT NULL REFERENCES medsim.users(id) ON DELETE CASCADE,
-    message VARCHAR(1000),
-    status medsim.chat_status_enum NOT NULL DEFAULT 'sent',
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    expires_at TIMESTAMPTZ DEFAULT NULL,
-    UNIQUE (sender_id, receiver_id, created_at)
-);
-
 -- Index
 CREATE INDEX idx_clinics_cnpj ON medsim.clinics (cnpj);
 
@@ -159,7 +145,6 @@ CREATE UNIQUE INDEX idx_doctors_crm ON medsim.doctors (crm);
 CREATE INDEX idx_doctors_specialty ON medsim.doctors (specialty);
 
 CREATE UNIQUE INDEX idx_clients_cpf ON medsim.clients (cpf);
-CREATE UNIQUE INDEX idx_clients_rg ON medsim.clients (rg);
 
 CREATE INDEX idx_appointments_appointment_datetime ON medsim.appointments(appointment_datetime);
 
@@ -169,7 +154,3 @@ CREATE INDEX idx_notifications_user_id ON medsim.notifications(user_id);
 
 CREATE INDEX idx_schedules_doctor_id ON medsim.schedules(doctor_id);
 CREATE INDEX idx_schedules_weekday ON medsim.schedules(weekday);
-
-CREATE INDEX idx_chat_sender_receiver ON medsim.chat (sender_id, receiver_id);
-CREATE INDEX idx_chat_receiver_sender ON medsim.chat (receiver_id, sender_id);
-CREATE INDEX idx_chat_status ON medsim.chat (status);
