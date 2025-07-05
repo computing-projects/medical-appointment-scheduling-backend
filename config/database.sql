@@ -12,12 +12,12 @@ CREATE TYPE medsim.waitlist_status_enum AS ENUM ('pending', 'confirmed', 'cancel
 CREATE TYPE medsim.notification_type_enum AS ENUM ('email', 'whatsapp');
 CREATE TYPE medsim.notification_status_enum AS ENUM ('pending', 'sent', 'failed');
 CREATE TYPE medsim.weekday_enum AS ENUM ('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday');
-CREATE TYPE medsim.chat_status_enum AS ENUM ('sent', 'delivered', 'read');
 
 -- Tabela de Clinicas
 CREATE TABLE medsim.clinics (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL CHECK (LENGTH(name) > 3),
+    cep VARCHAR(8) CHECK (cep ~ '^\d{8}$') NOT NULL,
     address TEXT NOT NULL,
     cnpj VARCHAR(20) UNIQUE NOT NULL CHECK (cnpj ~ '^\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}$'),
     email VARCHAR(255) UNIQUE NOT NULL CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
@@ -34,6 +34,8 @@ CREATE TABLE medsim.users (
     name VARCHAR(255) NOT NULL CHECK (LENGTH(name) > 3),
     email VARCHAR(255) UNIQUE NOT NULL CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
     password_hash TEXT NOT NULL,
+    cep VARCHAR(8) CHECK (cep ~ '^\d{8}$') NOT NULL,
+    address TEXT NOT NULL,
     phone VARCHAR(20) CHECK (phone ~ '^\+?[0-9\s-]+$'),
     user_type medsim.user_type_enum NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
